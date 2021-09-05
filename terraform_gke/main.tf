@@ -4,8 +4,8 @@ provider "google" {
 module "gke_auth" {
   source = "terraform-google-modules/kubernetes-engine/google//modules/auth"
   depends_on   = [module.gke]
-  project_id   = ${{ secrets.GCP_PROJECT_ID }}
-  service_account_key =  ${{ secrets.GCP_SA_KEY }}
+  project_id   = var.project_id
+  #service_account_key =  ${{ secrets.GCP_SA_KEY }}
   location     = module.gke.region
   cluster_name = module.gke.name
 }
