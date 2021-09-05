@@ -41,7 +41,7 @@ module "gcp-network" {
 }
 
 module "gke" {
-  source                 = "terraform-google-modules/kubernetes-engine/google//modules/private-cluster"
+  source                 = "terraform-google-modules/kubernetes-engine/google"
   project_id             = var.project_id
   name                   = "${var.cluster_name}-${var.env_name}"
   regional               = true
