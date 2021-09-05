@@ -1,0 +1,107 @@
+# This is a workflow to create single node K3s based kubernetes cluster
+
+name: gke-cluster
+# env:
+#   AWS_DEFAULT_REGION: eu-west-1
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_cluster:
+        description: create eks cluster
+        default: "false"
+        required: true
+#       user_arn:
+#         description: provide user arn
+#         default: "false"
+#         required: true
+#       map_username:
+#         description: User name
+#         default: "false"
+#         required: true
+#       role_arn_node:
+#         description: node arn
+#         default: "false"
+#         required: true
+  push:
+    branches:
+      - 'main'
+   
+jobs:
+  deploy-gke-:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: install google-cloud-sdk,terraform,kubectl
+      run: |
+        #echo " Installing Google Cloud SDK "
+        echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+        sudo apt-get install apt-transport-https ca-certificates gnupg
+        curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+        sudo apt-get update && sudo apt-get install google-cloud-sdk
+        gcloud --version
+        echo " Installing Terraform "
+        wget https://releases.hashicorp.com/terraform/1.0.5/terraform_1.0.5_linux_amd64.zip
+        unzip terraform_1.0.5_linux_amd64.zip
+        mv terraform /usr/local/bin/
+        terraform version
+        echo " Terraform Installation Completed !!! "
+        echo " Installing aws-iam-authenticator "
+        # curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/aws-iam-authenticator
+        # curl -o aws-iam-authenticator.sha256 https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/aws-iam-authenticator.sha256
+        # openssl sha1 -sha256 aws-iam-authenticator
+        # chmod +x ./aws-iam-authenticator
+        # cp aws-iam-authenticator /usr/local/bin/
+        # echo " aws-iam-authenticator Installation Completed !!! "
+        echo " Installing kubectl "
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256"
+        echo "$(<kubectl.sha256) kubectl" | sha256sum --check
+        sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+        chmod +x kubectl
+        mkdir -p ~/.local/bin/kubectl
+        mv ./kubectl ~/.local/bin/kubectl
+        mkdir -p .kube
+        echo " kubectl Installation Completed !!! "
+        echo " Installing Helm "
+        curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+        chmod 700 get_helm.sh
+        ./get_helm.sh
+        echo " Helm Installation Completed !!! "
+      # env:
+      #   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #   AWS_DEFAULT_REGION: ${{ env.AWS_DEFAULT_REGION }}
+
+    - name: Build GKE cluster
+      run: |
+        pushd terraform_gke
+        # cat > .env <<EOF
+        # ROLE_ARN_NODE=${{ github.event.inputs.role_arn_node }}
+        # USER_ARN=${{ github.event.inputs.user_arn }}
+        # MAP_USERNAME=${{ github.event.inputs.map_username }}
+        # EOF
+        # source .env
+        # if [[ "${{ github.event.inputs.deploy_cluster }}" == "true" ]]; then
+        #    # Provison of EKS cluster
+           terraform init
+           terraform plan --out gw_gke.plan
+           terraform apply "gw_gke.plan"
+           echo " deployment of GKE cluster is completed !!! "
+          #  aws sts get-caller-identity
+          #  aws eks --region eu-west-1 update-kubeconfig --name terraform-eks-gw
+          #  kubectl version 
+          #  envsubst < config_map_aws_auth.yaml | kubectl apply -f -
+           #kubectl apply -f config_map_aws_auth.yaml
+        #    sleep 2
+        #    kubectl get nodes
+        #    echo " deployment of eks cluster is completed !!! "
+        
+        # else 
+        #   terraform destroy
+        #   echo " deletion of eks cluster completed !!! "
+        # fi
+      env:
+        GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+        # AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        # AWS_DEFAULT_REGION: ${{ env.AWS_DEFAULT_REGION }}
