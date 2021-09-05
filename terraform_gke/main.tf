@@ -1,5 +1,5 @@
 provider "google" {
-  version = "~> 3.42.0"
+  #version = "~> 3.42.0"
 }
 module "gke_auth" {
   source = "terraform-google-modules/kubernetes-engine/google//modules/auth"
@@ -18,7 +18,27 @@ module "gcp-network" {
   version      = "~> 2.5"
   project_id   = var.project_id
   network_name = "${var.network}-${var.env_name}"
-  subnetwork = var.subnetwork
+  #subnetwork = var.subnetwork
+  subnets = [
+    {
+      subnet_name   = "${var.subnetwork}-${var.env_name}"
+      subnet_ip     = "10.10.0.0/16"
+      subnet_region = var.region
+    },
+  ]
+  secondary_ranges = {
+    "${var.subnetwork}-${var.env_name}" = [
+      {
+        range_name    = var.ip_range_pods_name
+        ip_cidr_range = "10.20.0.0/16"
+      },
+      {
+        range_name    = var.ip_range_services_name
+        ip_cidr_range = "10.30.0.0/16"
+      },
+    ]
+  }
+}
 
 module "gke" {
   source                 = "terraform-google-modules/kubernetes-engine/google//modules/private-cluster"
